@@ -1,0 +1,18 @@
+{
+  "featured": [
+    {
+      "name": "Renegade Raider",
+      "rarity": "Legendary",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_028_athena_commando_f_retro/icon.png"
+    }
+  ],
+  "daily": [
+    {
+      "name": "Aura",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_392_athena_commando_f_pinkflamingos/icon.png"
+    }
+  ]
+}
