@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        .header { display: flex; justify-content: space-between; padding: 20px; background: rgba(255,255,255,0.1); }
+        .timer { color: #fdfd04; font-weight: bold; font-size: 1.2rem; }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 20px; }
+        .item-card { 
+            background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+            border: 2px solid #444; border-radius: 4px; overflow: hidden; position: relative;
+            transition: transform 0.2s;
+        }
+        .item-card:hover { transform: scale(1.05); border-color: #0078d7; }
+        .item-card img { width: 100%; height: auto; display: block; }
+        .item-info { padding: 10px; background: rgba(0,0,0,0.8); }
+        .rarity-legendary { border-bottom: 5px solid #d37815; }
+        .rarity-epic { border-bottom: 5px solid #b156cf; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="font-size: 1.5rem; font-weight: 800;">ITEM SHOP</div>
+        <div class="timer" id="timer">RESET IN: 00:00:00</div>
+    </div>
+    <div class="shop-grid" id="shop-grid">
+        </div>
+
+    <script>
+        function updateTimer() {
+            const now = new Date();
+            const reset = new Date();
+            reset.setUTCHours(24, 0, 0, 0);
+            const diff = reset - now;
+            const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `RESET IN: ${h}:${m}:${s}`;
+        }
+        setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>
