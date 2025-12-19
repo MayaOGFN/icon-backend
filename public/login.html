@@ -1,84 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Project Icon | Login</title>
     <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: url('https://wallpaperaccess.com/full/621116.jpg') no-repeat center center fixed; background-size: cover; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .box { background: rgba(15, 15, 15, 0.9); padding: 40px; border-radius: 20px; border: 1px solid #007bff; width: 400px; text-align: center; backdrop-filter: blur(10px); }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: #007bff; border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://wallpaperaccess.com/full/621116.jpg') no-repeat center center fixed; background-size: cover; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { background: rgba(15, 15, 15, 0.9); padding: 40px; border-radius: 20px; border: 1px solid #007bff; width: 400px; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .btn { width: 100%; padding: 12px; background: #007bff; border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: 0.3s; text-transform: uppercase; }
+        .btn:hover { background: #0056b3; }
         .hidden { display: none; }
-        #chatBox { height: 200px; overflow-y: auto; background: #111; border: 1px solid #333; margin: 10px 0; padding: 10px; text-align: left; font-size: 0.9rem; }
+        .dashboard { width: 500px; text-align: left; }
+        .status { margin-top: 10px; font-size: 0.9rem; color: #00c851; }
     </style>
 </head>
 <body>
 
     <div class="box" id="loginUI">
-        <h1>LOGIN</h1>
+        <h1 style="margin-top:0;">LOGIN</h1>
+        <p style="color:#888;">Enter your credentials to manage your account.</p>
         <input type="email" id="email" placeholder="Email Address">
         <input type="password" id="pass" placeholder="Password">
-        <button class="btn" onclick="login()">Enter Dashboard</button>
+        <button class="btn" onclick="handleLogin()">Login to Dashboard</button>
+        <p style="font-size: 0.8rem; margin-top: 20px;">No account? <a href="/register" style="color:#007bff; text-decoration:none;">Register here</a></p>
     </div>
 
-    <div class="box hidden" id="dashUI" style="width: 600px;">
-        <h2>DASHBOARD</h2>
-        <p>Welcome, <span id="userSpan" style="color:#007bff"></span></p>
+    <div class="box hidden dashboard" id="dashUI">
+        <h2 style="margin-top:0; color:#007bff;">DASHBOARD</h2>
+        <p>User: <span id="userSpan" style="font-weight:bold; color:white;"></span></p>
+        <p>Player ID: <span id="idSpan" style="font-family:monospace; color:#aaa;"></span></p>
         
-        <div style="text-align: left; background: #1a1a1a; padding: 15px; border-radius: 10px;">
-            <label>MOD SETTINGS: Set Game Server</label>
-            <select id="serverSelect">
-                <option value="Auto">Auto (Default)</option>
-                <option value="NA-East">NA-East</option>
-                <option value="Europe">Europe</option>
-                <option value="Private">Custom IP</option>
-            </select>
-        </div>
+        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
 
-        <h3>GLOBAL CHAT ROOM</h3>
-        <div id="chatBox"></div>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="chatInput" placeholder="Type a message...">
-            <button class="btn" style="width: 80px; margin: 10px 0;" onclick="sendChat()">Send</button>
-        </div>
+        <label style="font-size: 0.8rem; color: #888;">GAME SERVER REGION</label>
+        <select id="serverSelect" onchange="updateServer()">
+            <option value="Auto">Auto (Recommended)</option>
+            <option value="NA-East">North America East</option>
+            <option value="Europe">Europe</option>
+            <option value="Asia">Asia</option>
+            <option value="Private">Private Server (Custom)</option>
+        </select>
+        <div id="statusMsg" class="status"></div>
+
+        <button class="btn" style="background:#444; margin-top:30px;" onclick="location.reload()">Logout</button>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
         let currentUser = null;
 
-        async function login() {
-            const res = await fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    email: document.getElementById('email').value, 
-                    password: document.getElementById('pass').value 
-                })
-            });
-            const data = await res.json();
-            if(res.ok) {
-                currentUser = data.user;
-                document.getElementById('loginUI').classList.add('hidden');
-                document.getElementById('dashUI').classList.remove('hidden');
-                document.getElementById('userSpan').innerText = currentUser.username;
-            } else { alert(data.message); }
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('pass').value;
+
+            try {
+                const res = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, type: 'login' })
+                });
+                
+                const data = await res.json();
+                if(res.ok) {
+                    currentUser = data.user;
+                    document.getElementById('loginUI').classList.add('hidden');
+                    document.getElementById('dashUI').classList.remove('hidden');
+                    document.getElementById('userSpan').innerText = currentUser.username;
+                    document.getElementById('idSpan').innerText = currentUser.playerId;
+                    document.getElementById('serverSelect').value = currentUser.selectedServer || "Auto";
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) { alert("Server error"); }
         }
 
-        // Chat Logic
-        function sendChat() {
-            const msg = document.getElementById('chatInput').value;
-            if(msg) {
-                socket.emit('send_message', { user: currentUser.username, msg: msg });
-                document.getElementById('chatInput').value = '';
-            }
+        async function updateServer() {
+            const serverName = document.getElementById('serverSelect').value;
+            const status = document.getElementById('statusMsg');
+            
+            try {
+                const res = await fetch('/api/settings/server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentUser.email, serverName })
+                });
+                if(res.ok) {
+                    status.innerText = "✅ Server updated to " + serverName;
+                    setTimeout(() => status.innerText = "", 3000);
+                }
+            } catch (err) { console.error(err); }
         }
-
-        socket.on('receive_message', (data) => {
-            const chatBox = document.getElementById('chatBox');
-            chatBox.innerHTML += `<div><b style="color:#007bff">${data.user}:</b> ${data.msg}</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
     </script>
 </body>
 </html>
