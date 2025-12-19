@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "username": "TesterAccount",
+    "email": "TEST@tester.com",
+    "password": "test",
+    "playerId": "ICON_0001",
+    "selectedServer": "Auto"
+  }
+]
