@@ -1,74 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Project Icon | Dashboard</title>
+    <title>Project Icon | Account Portal</title>
     <style>
         body { background: #080808; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .container { width: 400px; background: #111; padding: 40px; border-radius: 20px; border: 1px solid #222; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 15px 0; background: #1a1a1a; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .login-btn { background: #007bff; color: white; }
-        .claim-btn { background: #ffd700; color: black; margin-top: 20px; }
-        .claim-btn:disabled { background: #333; color: #666; }
+        input { width: 100%; padding: 12px; margin: 15px 0; background: #1a1a1a; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; background: #007bff; color: white; }
         .hidden { display: none; }
+        .id-badge { background: #222; color: #007bff; padding: 5px 10px; border-radius: 5px; font-family: monospace; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="container" id="loginView">
+    <div class="container" id="authBox">
         <h1>PROJECT <span style="color:#007bff">ICON</span></h1>
-        <input type="text" id="userInput" placeholder="Enter Username">
-        <button class="btn login-btn" onclick="login()">ENTER DASHBOARD</button>
+        <p style="color:#666">Enter username to Register or Login</p>
+        <input type="text" id="username" placeholder="Username...">
+        <button class="btn" onclick="authenticate()">CONTINUE</button>
     </div>
 
-    <div class="container hidden" id="dashView">
-        <h2 id="welcomeText">Welcome</h2>
-        <div style="background:#1a1a1a; padding: 20px; border-radius: 15px; border:1px solid #333;">
-            <p style="color:#888; margin:0;">V-BUCKS BALANCE</p>
-            <h1 id="vbucksVal" style="color:#ffd700; font-size: 3rem; margin:10px 0;">0</h1>
-            <button class="btn claim-btn" id="claimBtn" onclick="claim()">CLAIM 200 V-BUCKS</button>
-        </div>
-        <button onclick="location.reload()" style="background:none; border:none; color:#444; margin-top:20px; cursor:pointer;">Logout</button>
+    <div class="container hidden" id="dashBox">
+        <h2>Welcome, <span id="displayName"></span></h2>
+        <p>Your Player ID: <span class="id-badge" id="displayId"></span></p>
+        <hr style="border:0; border-top:1px solid #222; margin:20px 0;">
+        <button class="btn" style="background:#ffd700; color:black;" onclick="claim()">CLAIM 200 V-BUCKS</button>
     </div>
 
     <script>
-        let currentUser = null;
-
-        async function login() {
-            const username = document.getElementById('userInput').value;
-            if (!username) return alert("Enter a username!");
-
-            const res = await fetch('/api/login', {
+        async function authenticate() {
+            const user = document.getElementById('username').value;
+            const res = await fetch('/api/auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-
-            if (res.ok) {
-                currentUser = await res.json();
-                showDashboard();
-            }
-        }
-
-        function showDashboard() {
-            document.getElementById('loginView').classList.add('hidden');
-            document.getElementById('dashView').classList.remove('hidden');
-            document.getElementById('welcomeText').innerText = "Hello, " + currentUser.username;
-            document.getElementById('vbucksVal').innerText = currentUser.vbucks;
-        }
-
-        async function claim() {
-            const res = await fetch('/api/claim', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser.username })
+                body: JSON.stringify({ username: user })
             });
             const data = await res.json();
             
-            if (res.ok) {
-                alert(data.message);
-                document.getElementById('vbucksVal').innerText = data.newBalance;
-            } else {
+            if(res.ok) {
+                // Save to LocalStorage for the Launcher to find
+                localStorage.setItem('icon_user', JSON.stringify(data.user));
+                
+                document.getElementById('authBox').classList.add('hidden');
+                document.getElementById('dashBox').classList.remove('hidden');
+                document.getElementById('displayName').innerText = data.user.username;
+                document.getElementById('displayId').innerText = data.user.playerId;
+                
                 alert(data.message);
             }
         }
