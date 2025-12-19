@@ -1,24 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Project Icon | Dashboard</title>
     <style>
-        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 50px; }
-        .container { max-width: 800px; margin: auto; }
-        .btn-hub {
-            display: inline-block; padding: 20px 40px; margin: 20px;
-            background: #0078d7; color: white; text-decoration: none;
-            font-weight: bold; border-radius: 5px; transition: 0.3s;
-        }
-        .btn-hub:hover { background: #005a9e; transform: scale(1.05); }
-        h1 { font-size: 3rem; letter-spacing: 2px; }
+        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; }
+        .container { margin-top: 50px; }
+        .btn { padding: 15px 30px; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; margin: 10px; }
+        .discord-btn { background: #5865F2; color: white; }
+        .claim-btn { background: #ffd700; color: black; }
+        .claim-btn:disabled { background: #444; color: #888; }
+        .card { background: #1a1a1a; padding: 20px; display: inline-block; border-radius: 10px; border: 1px solid #333; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>FYNOX HUB</h1>
-        <p>Manage your account and view live game data.</p>
-        <a href="itemshop.html" class="btn-hub">VIEW CURRENT ITEM SHOP</a>
+        <h1>PROJECT ICON</h1>
+        
+        <div class="card">
+            <h3>Account Access</h3>
+            <button class="btn discord-btn" onclick="window.location.href='/auth/discord'">
+                Login with Discord
+            </button>
+        </div>
+
+        <br><br>
+
+        <div class="card">
+            <h3>Daily Rewards</h3>
+            <p>Claim 200 V-Bucks every 2 hours!</p>
+            <button id="claimBtn" class="btn claim-btn" onclick="claimVBucks()">CLAIM 200 V-BUCKS</button>
+            <p id="statusMsg"></p>
+        </div>
     </div>
+
+    <script>
+        async function claimVBucks() {
+            const email = localStorage.getItem('userEmail'); // Assuming you store email on login
+            const response = await fetch('/claim-vbucks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const result = await response.text();
+            document.getElementById('statusMsg').innerText = result;
+        }
+    </script>
 </body>
 </html>
