@@ -1,0 +1,14 @@
+{
+  "codes": [
+    {
+      "code": "FNYOXDEVR21",
+      "status": "unused",
+      "reward": "Founder Pack"
+    },
+    {
+      "code": "BETA-TEST-99",
+      "status": "used",
+      "reward": "V-Bucks"
+    }
+  ]
+}
