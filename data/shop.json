@@ -1,18 +1,89 @@
+// --- UPDATED SHOP LOGIC ---
+private async void LoadShop()
 {
-  "featured": [
+    contentPanel.Controls.Clear();
+    try
     {
-      "name": "Renegade Raider",
-      "rarity": "Legendary",
-      "price": 1200,
-      "image": "https://fortnite-api.com/images/cosmetics/br/cid_028_athena_commando_f_retro/icon.png"
+        using HttpClient client = new HttpClient();
+        // Replace with your actual URL
+        string json = await client.GetStringAsync("https://THESITEIGOT/code/shop");
+        var shop = JsonSerializer.Deserialize<ShopData>(json);
+
+        // Add Featured Section Header
+        AddShopHeader("FEATURED ITEMS");
+        foreach (var item in shop.featured) { CreateItemCard(item); }
+
+        // Add Daily Section Header
+        AddShopHeader("DAILY ITEMS");
+        foreach (var item in shop.daily) { CreateItemCard(item); }
     }
-  ],
-  "daily": [
-    {
-      "name": "Aura",
-      "rarity": "Rare",
-      "price": 800,
-      "image": "https://fortnite-api.com/images/cosmetics/br/cid_392_athena_commando_f_pinkflamingos/icon.png"
+    catch (Exception ex) 
+    { 
+        MessageBox.Show("Shop Error: " + ex.Message); 
     }
-  ]
+}
+
+private void AddShopHeader(string text)
+{
+    Label header = new Label { 
+        Text = text, 
+        Size = new Size(contentPanel.Width - 50, 40), 
+        Font = new Font("Segoe UI", 14, FontStyle.Bold), 
+        ForeColor = Color.DodgerBlue, 
+        Margin = new Padding(0, 20, 0, 10) 
+    };
+    contentPanel.Controls.Add(header);
+}
+
+private async void CreateItemCard(ShopItem item)
+{
+    // The Box
+    Panel card = new Panel { Size = new Size(180, 240), BackColor = Color.FromArgb(35, 35, 35), Margin = new Padding(10) };
+    
+    // Rarity Color Strip
+    Panel rarityStrip = new Panel { Dock = DockStyle.Top, Height = 5, BackColor = GetRarityColor(item.rarity) };
+    
+    // Item Image
+    PictureBox pic = new PictureBox { Size = new Size(160, 160), Location = new Point(10, 15), SizeMode = PictureBoxSizeMode.StretchImage, BackColor = Color.FromArgb(25, 25, 25) };
+    
+    // Labels
+    Label nameLabel = new Label { Text = item.name, Dock = DockStyle.Bottom, Height = 25, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
+    Label priceLabel = new Label { Text = $"{item.price} V-Bucks", Dock = DockStyle.Bottom, Height = 20, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Gold };
+
+    card.Controls.AddRange(new Control[] { pic, rarityStrip, nameLabel, priceLabel });
+    contentPanel.Controls.Add(card);
+
+    // Load Image from URL
+    try {
+        using var imgClient = new HttpClient();
+        var bytes = await imgClient.GetByteArrayAsync(item.image);
+        using var ms = new MemoryStream(bytes);
+        pic.Image = Image.FromStream(ms);
+    } catch { /* Fallback if image fails */ }
+}
+
+private Color GetRarityColor(string rarity)
+{
+    return rarity.ToLower() switch {
+        "legendary" => Color.Orange,
+        "epic" => Color.Purple,
+        "rare" => Color.DeepSkyBlue,
+        "uncommon" => Color.LimeGreen,
+        _ => Color.Gray
+    };
+}
+
+// --- DATA MODELS MATCHING YOUR JSON ---
+public class ShopItem 
+{ 
+    public string name { get; set; } 
+    public string rarity { get; set; } 
+    public int price { get; set; } 
+    public string image { get; set; } 
+}
+
+public class ShopData 
+{ 
+    public List<ShopItem> daily { get; set; } 
+    public List<ShopItem> featured { get; set; } 
 }
