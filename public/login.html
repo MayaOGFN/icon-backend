@@ -1,28 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Project Icon | Login</title>
     <style>
-        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: #1a1a1a; padding: 40px; border-radius: 10px; border: 1px solid #333; width: 300px; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #333; border: none; color: white; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
-        a { color: #007bff; text-decoration: none; font-size: 0.9em; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: url('https://wallpaperaccess.com/full/621116.jpg') no-repeat center center fixed; background-size: cover; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { background: rgba(15, 15, 15, 0.9); padding: 40px; border-radius: 20px; border: 1px solid #007bff; width: 400px; text-align: center; backdrop-filter: blur(10px); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: #007bff; border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        .hidden { display: none; }
+        #chatBox { height: 200px; overflow-y: auto; background: #111; border: 1px solid #333; margin: 10px 0; padding: 10px; text-align: left; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="login-box">
-        <h2>Login</h2>
-        <form action="/login" method="POST">
-            <input type="email" name="email" placeholder="Email Address" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Sign In</button>
-        </form>
-        <p style="font-size: 0.8em; color: #777; margin-top: 20px;">
-            New here? <a href="/register.html">Create an account</a>
-        </p>
+
+    <div class="box" id="loginUI">
+        <h1>LOGIN</h1>
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="pass" placeholder="Password">
+        <button class="btn" onclick="login()">Enter Dashboard</button>
     </div>
+
+    <div class="box hidden" id="dashUI" style="width: 600px;">
+        <h2>DASHBOARD</h2>
+        <p>Welcome, <span id="userSpan" style="color:#007bff"></span></p>
+        
+        <div style="text-align: left; background: #1a1a1a; padding: 15px; border-radius: 10px;">
+            <label>MOD SETTINGS: Set Game Server</label>
+            <select id="serverSelect">
+                <option value="Auto">Auto (Default)</option>
+                <option value="NA-East">NA-East</option>
+                <option value="Europe">Europe</option>
+                <option value="Private">Custom IP</option>
+            </select>
+        </div>
+
+        <h3>GLOBAL CHAT ROOM</h3>
+        <div id="chatBox"></div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="chatInput" placeholder="Type a message...">
+            <button class="btn" style="width: 80px; margin: 10px 0;" onclick="sendChat()">Send</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentUser = null;
+
+        async function login() {
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: document.getElementById('email').value, 
+                    password: document.getElementById('pass').value 
+                })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                currentUser = data.user;
+                document.getElementById('loginUI').classList.add('hidden');
+                document.getElementById('dashUI').classList.remove('hidden');
+                document.getElementById('userSpan').innerText = currentUser.username;
+            } else { alert(data.message); }
+        }
+
+        // Chat Logic
+        function sendChat() {
+            const msg = document.getElementById('chatInput').value;
+            if(msg) {
+                socket.emit('send_message', { user: currentUser.username, msg: msg });
+                document.getElementById('chatInput').value = '';
+            }
+        }
+
+        socket.on('receive_message', (data) => {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `<div><b style="color:#007bff">${data.user}:</b> ${data.msg}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    </script>
 </body>
 </html>
