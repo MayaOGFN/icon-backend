@@ -1,48 +1,69 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
-const crypto = require('crypto'); // For generating IDs
+const crypto = require('crypto');
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- DATABASE ---
 const MONGODB_URI = "mongodb+srv://LunaDev32:avathomasy66@cluster0.koya5nx.mongodb.net/?appName=Cluster0";
-mongoose.connect(MONGODB_URI).then(() => console.log("✅ DB Connected"));
+mongoose.connect(MONGODB_URI)
+    .then(() => console.log("✅ Database Connected"))
+    .catch(err => console.error("❌ DB Error:", err));
 
 const userSchema = new mongoose.Schema({
     username: { type: String, unique: true },
-    playerId: { type: String, unique: true }, // The ID OGFN needs
+    email: { type: String, unique: true },
+    playerId: { type: String, unique: true },
     vbucks: { type: Number, default: 0 },
     lastClaimed: { type: Date, default: new Date(0) }
 });
 const User = mongoose.model('User', userSchema);
 
-// --- REGISTER / LOGIN ROUTE ---
-app.post('/api/auth', async (req, res) => {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ message: "Username required" });
+// --- HTML PAGE ROUTING ---
+// These fix the "Cannot GET" errors by pointing URLs to your files
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/shop', (req, res) => res.sendFile(path.join(__dirname, 'public', 'itemshop.html')));
 
+// --- API ROUTES ---
+
+// Auth Route (Used by Web and Launcher)
+app.post('/api/auth', async (req, res) => {
+    const { email, username } = req.body;
     try {
-        let user = await User.findOne({ username });
+        let user = await User.findOne({ $or: [{ email: email }, { username: username }] });
         
-        if (!user) {
-            // REGISTER: Create new player with unique ID
+        if (!user && username) { // Registration Logic
             const randomId = crypto.randomBytes(2).toString('hex');
-            const newPlayerId = `ICON_${randomId}`; 
-            
             user = await User.create({ 
                 username: username, 
-                playerId: newPlayerId 
+                email: email,
+                playerId: `ICON_${randomId}` 
             });
             return res.json({ message: "Registered!", user });
         }
         
-        // LOGIN: Return existing user
-        res.json({ message: "Logged in!", user });
+        if (user) return res.json({ message: "Logged in!", user });
+        res.status(404).json({ message: "User not found" });
     } catch (err) { res.status(500).json({ message: "Server Error" }); }
 });
 
-// (Keep the /api/claim route from previous code here)
+// Shop JSON Endpoint
+app.get('/shop.json', (req, res) => {
+    // Replace this with your actual shop data or require('./shop.json')
+    res.json({
+        featured: [
+            { name: "Renegade Raider", price: 1200, image: "https://fortnite-api.com/images/cosmetics/br/cid_028_athena_commando_f_renegade/icon.png" }
+        ],
+        daily: [
+            { name: "Scythe", price: 800, image: "https://fortnite-api.com/images/cosmetics/br/pickaxe_id_015_halloween/icon.png" }
+        ]
+    });
+});
 
-app.listen(3000, () => console.log("🚀 Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
