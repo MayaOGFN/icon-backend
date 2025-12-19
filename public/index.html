@@ -5,75 +5,181 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Icon | Dashboard</title>
     <style>
-        :root { --main: #007bff; --bg: #080808; --card: #121212; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        .container { width: 90%; max-width: 500px; background: var(--card); border: 1px solid #222; border-radius: 24px; padding: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        
-        .discord-login { background: #5865F2; color: white; text-decoration: none; padding: 15px 30px; border-radius: 12px; font-weight: bold; display: inline-block; transition: 0.3s; }
-        .discord-login:hover { background: #4752c4; transform: scale(1.05); }
+        :root { 
+            --primary: #007bff; 
+            --bg: #050505; 
+            --card: #111111; 
+            --gold: #ffd700;
+        }
 
-        .reward-card { background: linear-gradient(145deg, #1a1a1a, #0a0a0a); border: 1px solid #333; padding: 30px; border-radius: 20px; margin-top: 20px; }
-        .vbucks-amount { font-size: 3rem; font-weight: 800; color: #ffd700; margin: 10px 0; text-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
-        
-        .claim-btn { background: var(--main); color: white; border: none; width: 100%; padding: 15px; border-radius: 10px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .claim-btn:hover { filter: brightness(1.2); }
-        .claim-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+        body { 
+            background: var(--bg); 
+            color: white; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+        }
 
-        .status-pill { background: #222; padding: 8px 16px; border-radius: 50px; font-size: 0.9rem; margin-bottom: 20px; display: inline-block; color: #888; }
-        .hidden { display: none; }
+        .container { 
+            width: 90%; 
+            max-width: 450px; 
+            background: var(--card); 
+            border: 1px solid #222; 
+            border-radius: 20px; 
+            padding: 40px; 
+            text-align: center; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7); 
+        }
+
+        h1 { font-size: 2.2rem; margin-bottom: 10px; letter-spacing: 1px; }
+        .accent { color: var(--primary); }
+
+        /* Login Button */
+        .discord-btn { 
+            background: #5865F2; 
+            color: white; 
+            text-decoration: none; 
+            padding: 14px 28px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+        .discord-btn:hover { background: #4752c4; transform: translateY(-2px); }
+
+        /* Dashboard Elements */
+        .user-info { 
+            background: #1a1a1a; 
+            padding: 10px 20px; 
+            border-radius: 50px; 
+            font-size: 0.85rem; 
+            color: #aaa; 
+            margin-bottom: 25px; 
+            display: inline-block;
+            border: 1px solid #333;
+        }
+
+        .vbucks-box { 
+            background: linear-gradient(145deg, #151515, #0a0a0a); 
+            padding: 30px; 
+            border-radius: 15px; 
+            border: 1px solid #252525; 
+            margin: 20px 0;
+        }
+
+        .vbucks-val { 
+            font-size: 3.5rem; 
+            font-weight: 900; 
+            color: var(--gold); 
+            margin: 5px 0;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .claim-btn { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 12px; 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        .claim-btn:hover:not(:disabled) { filter: brightness(1.2); }
+        .claim-btn:disabled { background: #222; color: #555; cursor: not-allowed; }
+
+        .footer-link { 
+            display: block; 
+            margin-top: 25px; 
+            color: #444; 
+            text-decoration: none; 
+            font-size: 0.8rem; 
+        }
+        .footer-link:hover { color: #888; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="container" id="loginView">
-        <h1 style="font-size: 2.5rem; margin-bottom: 10px;">PROJECT <span style="color: var(--main)">ICON</span></h1>
-        <p style="color: #666; margin-bottom: 30px;">Sign in to manage your V-Bucks and claim rewards.</p>
-        <a href="/auth/discord" class="discord-login">LOGIN WITH DISCORD</a>
+    <div class="container" id="loginScreen">
+        <h1>PROJECT <span class="accent">ICON</span></h1>
+        <p style="color: #666;">Connect your Discord to claim your rewards and manage your account.</p>
+        <a href="/auth/discord" class="discord-btn">LOGIN WITH DISCORD</a>
     </div>
 
-    <div class="container hidden" id="dashView">
-        <div class="status-pill" id="userTag">Connected</div>
-        <h2 style="margin: 0;">Account Dashboard</h2>
+    <div class="container hidden" id="dashScreen">
+        <div class="user-info" id="usernameTag">Loading user...</div>
+        <h2 style="margin: 0;">Your Rewards</h2>
         
-        <div class="reward-card">
-            <p style="margin: 0; color: #888; text-transform: uppercase; letter-spacing: 1px;">Current Balance</p>
-            <div class="vbucks-amount" id="balanceDisplay">0</div>
-            <p style="color: #ffd700; font-weight: bold;">FREE 200 V-BUCKS AVAILABLE</p>
-            <button class="claim-btn" id="claimBtn" onclick="claimReward()">CLAIM REWARD</button>
-            <p id="cooldownMsg" style="font-size: 0.8rem; color: #555; margin-top: 15px;"></p>
+        <div class="vbucks-box">
+            <p style="margin: 0; color: #777; font-size: 0.9rem; text-transform: uppercase;">Total V-Bucks</p>
+            <div class="vbucks-val" id="vbucksCount">0</div>
+            <button class="claim-btn" id="claimBtn" onclick="handleClaim()">CLAIM 200 V-BUCKS</button>
+            <p id="cooldownText" style="margin-top: 15px; font-size: 0.85rem; color: #555;"></p>
         </div>
-        
-        <a href="/logout" style="color: #444; text-decoration: none; font-size: 0.8rem; display: block; margin-top: 20px;">Logout</a>
+
+        <a href="/logout" class="footer-link">Logout of Project Icon</a>
     </div>
 
     <script>
-        // Check Auth Status on Load
-        async function checkStatus() {
-            const res = await fetch('/api/me');
-            if (res.ok) {
-                const user = await res.json();
-                document.getElementById('loginView').classList.add('hidden');
-                document.getElementById('dashView').classList.remove('hidden');
-                document.getElementById('userTag').innerText = "Logged in as: " + user.username;
-                document.getElementById('balanceDisplay').innerText = user.vbucks;
+        // Check if user is logged in on page load
+        async function init() {
+            try {
+                const response = await fetch('/api/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    showDashboard(user);
+                }
+            } catch (err) {
+                console.error("Auth check failed:", err);
             }
         }
 
-        async function claimReward() {
-            const res = await fetch('/api/claim', { method: 'POST' });
-            const data = await res.json();
+        function showDashboard(user) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashScreen').classList.remove('hidden');
+            document.getElementById('usernameTag').innerText = `Logged in as: ${user.username}`;
+            document.getElementById('vbucksCount').innerText = user.vbucks.toLocaleString();
             
-            if (res.ok) {
-                alert(data.message);
-                document.getElementById('balanceDisplay').innerText = data.newBalance;
-                location.reload(); // Refresh to update cooldown
-            } else {
-                alert(data.message);
+            // Optional: You can calculate cooldown here if you want to disable the button instantly
+        }
+
+        async function handleClaim() {
+            const btn = document.getElementById('claimBtn');
+            const cooldownMsg = document.getElementById('cooldownText');
+            
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            try {
+                const response = await fetch('/api/claim', { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert("✅ " + data.message);
+                    document.getElementById('vbucksCount').innerText = data.newBalance.toLocaleString();
+                    cooldownMsg.innerText = "Successfully claimed! Check back in 2 hours.";
+                } else {
+                    alert("❌ " + data.message);
+                    cooldownMsg.innerText = data.message;
+                }
+            } catch (err) {
+                alert("Server error. Please try again later.");
+            } finally {
+                btn.innerText = "CLAIM 200 V-BUCKS";
+                // Keep button disabled if it was a success or a cooldown error
             }
         }
 
-        checkStatus();
+        // Run on load
+        init();
     </script>
 </body>
 </html>
