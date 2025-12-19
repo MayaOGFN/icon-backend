@@ -1,70 +1,207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Project Icon | Register</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Icon | Register Account</title>
     <style>
+        :root {
+            --primary: #007bff;
+            --bg-overlay: rgba(0, 0, 0, 0.7);
+            --glass: rgba(20, 20, 20, 0.9);
+        }
+
         body {
             margin: 0;
+            padding: 0;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://wallpaperaccess.com/full/621116.jpg') no-repeat center center fixed;
+            /* Using your requested wallpaper */
+            background: linear-gradient(var(--bg-overlay), var(--bg-overlay)), 
+                        url('https://wallpaperaccess.com/full/621116.jpg') no-repeat center center fixed;
             background-size: cover;
             color: white;
+            overflow: hidden;
         }
-        .register-box {
-            background: rgba(15, 15, 15, 0.9);
-            padding: 40px;
-            border-radius: 15px;
+
+        .register-container {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            padding: 50px;
+            border-radius: 20px;
             border: 1px solid rgba(0, 123, 255, 0.3);
-            width: 350px;
+            width: 100%;
+            max-width: 400px;
             text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
         }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .accent { color: var(--primary); }
+
+        p {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
         input {
             width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            background: #222;
-            border: 1px solid #444;
+            padding: 14px;
+            background: #111;
+            border: 1px solid #333;
             color: white;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
             box-sizing: border-box;
         }
-        .btn {
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+        }
+
+        .register-btn {
             width: 100%;
-            padding: 12px;
-            background: #007bff;
+            padding: 15px;
+            background: var(--primary);
             border: none;
             color: white;
+            font-size: 1rem;
             font-weight: bold;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             margin-top: 10px;
+            transition: 0.2s;
+            text-transform: uppercase;
         }
-        .btn:hover { background: #0056b3; }
-        a { color: #888; text-decoration: none; font-size: 12px; margin-top: 15px; display: block; }
+
+        .register-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .register-btn:active {
+            transform: translateY(0);
+        }
+
+        .footer-links {
+            margin-top: 25px;
+            font-size: 0.85rem;
+        }
+
+        .footer-links a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        #statusMsg {
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+
+        .error { color: #ff4444; }
+        .success { color: #00c851; }
     </style>
 </head>
 <body>
-    <div class="register-box">
-        <h1 style="color: #007bff; margin-top: 0;">REGISTER</h1>
-        <p style="color: #aaa; font-size: 14px;">Join the Icon OGFN Community</p>
-        <input type="text" id="regEmail" placeholder="Email Address">
-        <input type="text" id="regUser" placeholder="Username">
-        <input type="password" id="regPass" placeholder="Password">
-        <button class="btn" onclick="registerUser()">CREATE ACCOUNT</button>
-        <a href="/">Back to Home</a>
+
+    <div class="register-container">
+        <h1>PROJECT <span class="accent">ICON</span></h1>
+        <p>CREATE YOUR OGFN PLAYER IDENTITY</p>
+
+        <div class="input-group">
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="name@example.com" required>
+        </div>
+
+        <div class="input-group">
+            <label>Display Name</label>
+            <input type="text" id="username" placeholder="Fynox" required>
+        </div>
+
+        <div class="input-group">
+            <label>Secure Password</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+
+        <button class="register-btn" onclick="handleRegister()">Register Player</button>
+
+        <div id="statusMsg"></div>
+
+        <div class="footer-links">
+            Already have an account? <a href="/login">Login here</a><br>
+            <a href="/" style="color: #555; display: inline-block; margin-top: 10px;">← Back to Home</a>
+        </div>
     </div>
 
     <script>
-        async function registerUser() {
-            const email = document.getElementById('regEmail').value;
-            const username = document.getElementById('regUser').value;
-            // Add your fetch logic here to call /api/auth
-            alert("Registration logic connecting...");
+        async function handleRegister() {
+            const email = document.getElementById('email').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const status = document.getElementById('statusMsg');
+
+            // Basic Validation
+            if (!email || !username || !password) {
+                status.innerHTML = '<span class="error">Please fill in all fields.</span>';
+                return;
+            }
+
+            status.innerHTML = '<span style="color: #888;">Creating account...</span>';
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = `<span class="success">✅ Registration Complete! Redirecting...</span>`;
+                    // Log the PlayerID just so the user knows
+                    console.log("Registered Player ID:", data.user.playerId);
+                    
+                    // Redirect to login after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    status.innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                }
+            } catch (err) {
+                status.innerHTML = '<span class="error">❌ Server Error. Please try again.</span>';
+            }
         }
     </script>
 </body>
