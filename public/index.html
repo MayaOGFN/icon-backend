@@ -1,48 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Project Icon | Dashboard</title>
+    <meta charset="UTF-8">
     <style>
-        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; }
-        .container { margin-top: 50px; }
-        .btn { padding: 15px 30px; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; margin: 10px; }
-        .discord-btn { background: #5865F2; color: white; }
-        .claim-btn { background: #ffd700; color: black; }
-        .claim-btn:disabled { background: #444; color: #888; }
-        .card { background: #1a1a1a; padding: 20px; display: inline-block; border-radius: 10px; border: 1px solid #333; }
+        :root { --primary: #007bff; --bg: #050505; --card: #121212; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        
+        .launcher-web { width: 400px; background: var(--card); border-radius: 15px; padding: 30px; border: 1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        .hidden { display: none; }
+        
+        .discord-btn { background: #5865F2; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; transition: 0.2s; }
+        .discord-btn:hover { background: #4752c4; transform: translateY(-2px); }
+        
+        .vbucks-card { background: linear-gradient(145deg, #1e1e1e, #111); padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid #333; }
+        .claim-btn { background: #ffd700; color: black; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+        .claim-btn:disabled { background: #333; color: #777; cursor: not-allowed; }
+        
+        .user-pill { background: #222; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; color: #aaa; margin-bottom: 20px; display: inline-block; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>PROJECT ICON</h1>
+
+    <div class="launcher-web" id="loginView">
+        <h1 style="color: var(--primary)">PROJECT ICON</h1>
+        <p style="color: #888">Connect your Discord to access the dashboard and rewards.</p>
+        <br>
+        <a href="/auth/discord" class="discord-btn">Login with Discord</a>
+    </div>
+
+    <div class="launcher-web hidden" id="dashboardView">
+        <div class="user-pill" id="userName">User: Loading...</div>
+        <h2>Welcome Back!</h2>
         
-        <div class="card">
-            <h3>Account Access</h3>
-            <button class="btn discord-btn" onclick="window.location.href='/auth/discord'">
-                Login with Discord
-            </button>
-        </div>
-
-        <br><br>
-
-        <div class="card">
-            <h3>Daily Rewards</h3>
-            <p>Claim 200 V-Bucks every 2 hours!</p>
-            <button id="claimBtn" class="btn claim-btn" onclick="claimVBucks()">CLAIM 200 V-BUCKS</button>
-            <p id="statusMsg"></p>
+        <div class="vbucks-card">
+            <div style="font-size: 0.9em; color: #ffd700; font-weight: bold;">FREE REWARDS</div>
+            <div style="font-size: 1.5em; margin: 10px 0;">200 V-Bucks</div>
+            <button id="claimBtn" class="claim-btn" onclick="claim()">CLAIM NOW</button>
+            <p id="timer" style="font-size: 0.8em; color: #666; margin-top: 10px;"></p>
         </div>
     </div>
 
     <script>
-        async function claimVBucks() {
-            const email = localStorage.getItem('userEmail'); // Assuming you store email on login
-            const response = await fetch('/claim-vbucks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email })
-            });
-            const result = await response.text();
-            document.getElementById('statusMsg').innerText = result;
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Check if user just logged in
+        if (urlParams.get('auth') === 'true') {
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+            document.getElementById('userName').innerText = "Logged in as: " + urlParams.get('user');
+        }
+
+        async function claim() {
+            const btn = document.getElementById('claimBtn');
+            const res = await fetch('/api/claim', { method: 'POST' });
+            
+            if (res.ok) {
+                alert("Successfully claimed 200 V-Bucks!");
+                startCooldown();
+            } else {
+                const msg = await res.text();
+                alert(msg);
+            }
+        }
+
+        function startCooldown() {
+            const btn = document.getElementById('claimBtn');
+            btn.disabled = true;
+            document.getElementById('timer').innerText = "Next claim available in 2 hours";
         }
     </script>
 </body>
