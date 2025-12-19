@@ -1,99 +1,98 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
+const passport = require('passport');
+const DiscordStrategy = require('passport-discord').Strategy;
+const session = require('express-session');
 
 const app = express();
-
-// --- CONFIGURATION ---
-// 1. Use the port Render gives us, or 4000 locally
-const PORT = process.env.PORT || 4000;
-
-// 2. MONGODB CONNECTION STRING
-// IMPORTANT: Replace <password> with your actual password (no brackets < >)
-const MONGO_URI = "mongodb+srv://LunaDev32:<avathomasy66>@cluster0.koya5nx.mongodb.net/?appName=Cluster0";
-
-// Connect to MongoDB
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("✅ SUCCESS: Connected to MongoDB Atlas!"))
-    .catch(err => console.error("❌ DATABASE ERROR: Check your password/IP whitelist!", err.message));
-
-// 3. DATABASE MODEL (User Account)
-const UserSchema = new mongoose.Schema({
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', UserSchema);
-
-// --- MIDDLEWARE ---
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-// Serve the 'public' folder for the website
-app.use(express.static(path.join(__dirname, 'public')));
 
-// --- WEBSITE ROUTES ---
+// --- MONGODB CONNECTION ---
+// Make sure 0.0.0.0/0 is whitelisted in MongoDB Atlas!
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log("✅ Connected to MongoDB Atlas"))
+    .catch(err => console.error("❌ MongoDB Error:", err));
 
-// Homepage
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// --- USER SCHEMA ---
+const userSchema = new mongoose.Schema({
+    discordId: String,
+    username: String,
+    email: String,
+    vbucks: { type: Number, default: 0 },
+    lastClaimed: { type: Date, default: new Date(0) } // Initialized to long ago
 });
+const User = mongoose.model('User', userSchema);
 
-// Register Logic (Saves to MongoDB)
-app.post('/register', async (req, res) => {
+// --- DISCORD OAUTH SETUP ---
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser((id, done) => User.findById(id, (err, user) => done(err, user)));
+
+passport.use(new DiscordStrategy({
+    clientID: process.env.1451508740493934725,
+    clientSecret: process.env.aPdQ4Ya8DUEnrHkJp-5fyGFPoYAaGhkq,
+    callbackURL: "https://icon-backend-9chw.onrender.com/auth/discord/callback",
+    scope: ['identify', 'email']
+}, async (accessToken, refreshToken, profile, done) => {
     try {
-        const { email, password } = req.body;
-        
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.send("<h1>Error</h1><p>Email already registered.</p><a href='/register.html'>Try again</a>");
+        let user = await User.findOne({ discordId: profile.id });
+        if (!user) {
+            user = await User.create({
+                discordId: profile.id,
+                username: profile.username,
+                email: profile.email,
+                vbucks: 0
+            });
         }
-
-        const newUser = new User({ email, password });
-        await newUser.save();
-        
-        console.log(`New user registered: ${email}`);
-        res.send("<h1>Success!</h1><p>Account created for " + email + ". You can now login in the launcher.</p><a href='/'>Go Home</a>");
+        return done(null, user);
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Server error during registration.");
+        return done(err, null);
     }
-});
+}));
 
-// --- LAUNCHER API ROUTES ---
+app.use(session({ secret: 'project_icon_secret', resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
 
-// News API
-app.get('/news', (req, res) => {
-    res.json([
-        {
-            title: "Project Icon Live",
-            body: "The backend is officially connected to MongoDB Atlas. Your accounts are now permanent!",
-            author: "Luna",
-            image: "https://i.imgur.com/83p73mS.png"
-        }
-    ]);
-});
+// --- AUTH ROUTES ---
+app.get('/auth/discord', passport.authenticate('discord'));
+app.get('/auth/discord/callback', passport.authenticate('discord', {
+    failureRedirect: '/'
+}), (req, res) => res.redirect('/dashboard')); // Redirect to your HTML dashboard
 
-// Shop API (Reads from data/shop.json)
-app.get('/shop', (req, res) => {
-    const shopPath = path.join(__dirname, 'data', 'shop.json');
-    try {
-        if (fs.existsSync(shopPath)) {
-            const rawData = fs.readFileSync(shopPath, 'utf8');
-            res.json(JSON.parse(rawData));
-        } else {
-            res.json({ featured: [], daily: [] });
-        }
-    } catch (err) {
-        res.status(500).json({ error: "Could not read shop file" });
+// --- V-BUCKS CLAIM ROUTE (2 HOUR COOLDOWN) ---
+app.post('/api/claim', async (req, res) => {
+    // In a real app, use req.user.id from session
+    const { email } = req.body; 
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const now = new Date();
+    const cooldown = 2 * 60 * 60 * 1000; // 2 hours in ms
+    const timePassed = now - new Date(user.lastClaimed);
+
+    if (timePassed < cooldown) {
+        const timeLeft = cooldown - timePassed;
+        const minutes = Math.ceil(timeLeft / (1000 * 60));
+        return res.status(400).json({ 
+            message: `Too soon! Try again in ${minutes} minutes.` 
+        });
     }
+
+    user.vbucks += 200;
+    user.lastClaimed = now;
+    await user.save();
+
+    res.json({ message: "Success! 200 V-Bucks added.", newBalance: user.vbucks });
 });
 
-// --- START SERVER ---
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`-----------------------------------------`);
-    console.log(`Project Icon Server running on Port: ${PORT}`);
-    console.log(`URL: https://icon-backend-xz9o.onrender.com`);
-    console.log(`-----------------------------------------`);
+// --- SHOP DATA ROUTE ---
+app.get('/code/shop', (req, res) => {
+    // Your shop.json logic here
+    res.sendFile(__dirname + '/shop.json');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 });
