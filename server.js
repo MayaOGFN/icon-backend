@@ -13,13 +13,16 @@ app.use(express.json());
 const CLIENT_ID = '1451508740493934725';
 const CLIENT_SECRET = 'aPdQ4Ya8DUEnrHkJp-5fyGFPoYAaGhkq';
 const REDIRECT_URI = 'https://icon-backend-9chw.onrender.com/auth/discord/callback';
-const MONGODB_URI = process.env.MONGODB_URI; 
 
-// --- DATABASE ---
+// FIXED: Correct MongoDB URL (No brackets around password)
+const MONGODB_URI = "mongodb+srv://LunaDev32:avathomasy66@cluster0.koya5nx.mongodb.net/?appName=Cluster0";
+
+// --- DATABASE CONNECTION ---
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log("✅ Database Connected"))
-    .catch(err => console.error("❌ DB Error:", err));
+    .then(() => console.log("✅ Successfully connected to Cluster0"))
+    .catch(err => console.error("❌ MongoDB Error: Check your IP Whitelist on Atlas!", err));
 
+// --- USER MODEL ---
 const userSchema = new mongoose.Schema({
     discordId: String,
     username: String,
@@ -29,11 +32,12 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// --- AUTH SETUP ---
+// --- AUTH & SESSION SETUP ---
 app.use(session({
-    secret: 'icon_secret_key_123',
+    secret: 'project_icon_super_secret',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: { maxAge: 60000 * 60 * 24 } // 1 day
 }));
 
 app.use(passport.initialize());
@@ -41,8 +45,10 @@ app.use(passport.session());
 
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
-    const user = await User.findById(id);
-    done(null, user);
+    try {
+        const user = await User.findById(id);
+        done(null, user);
+    } catch (err) { done(err, null); }
 });
 
 passport.use(new DiscordStrategy({
@@ -66,10 +72,10 @@ passport.use(new DiscordStrategy({
 
 // --- ROUTES ---
 
-// 1. Start Discord Login
+// Discord Auth Initial
 app.get('/auth/discord', passport.authenticate('discord'));
 
-// 2. The Callback (Valid HTML + JSON Page)
+// Discord Callback (Valid HTML + JSON Page)
 app.get('/auth/discord/callback', 
     passport.authenticate('discord', { failureRedirect: '/' }), 
     (req, res) => {
@@ -77,27 +83,26 @@ app.get('/auth/discord/callback',
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Project Icon | Authenticated</title>
+                <title>Success | Project Icon</title>
                 <style>
-                    body { background: #050505; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-                    .card { background: #111; padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; max-width: 400px; }
-                    .json { background: #000; padding: 15px; border-radius: 10px; color: #00ff00; font-family: monospace; text-align: left; margin-top: 20px; font-size: 12px; }
-                    .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+                    body { background: #050505; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                    .card { background: #111; padding: 40px; border-radius: 15px; border: 1px solid #333; text-align: center; }
+                    .json { background: #000; padding: 10px; color: #00ff00; font-family: monospace; font-size: 12px; margin-top: 15px; text-align: left; }
                 </style>
             </head>
             <body>
                 <div class="card">
                     <h1 style="color:#007bff">AUTHENTICATED</h1>
-                    <p>Welcome, <strong>${req.user.username}</strong>!</p>
+                    <p>Welcome back, ${req.user.username}!</p>
                     <div class="json">
                         {
-                            "status": "success",
                             "user": "${req.user.username}",
                             "vbucks": ${req.user.vbucks},
-                            "id": "${req.user.discordId}"
+                            "status": "Ready"
                         }
                     </div>
-                    <a href="/?auth=true" class="btn">Go to Dashboard</a>
+                    <p style="font-size: 12px; color: #666;">Redirecting to Dashboard...</p>
+                    <script>setTimeout(() => { window.location.href = "/?auth=true"; }, 2500);</script>
                 </div>
             </body>
             </html>
@@ -105,33 +110,38 @@ app.get('/auth/discord/callback',
     }
 );
 
-// 3. V-Bucks Claim (2hr Cooldown)
+// Claim V-Bucks Route
 app.post('/api/claim', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not logged in" });
-    
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Please log in first!" });
+
     const user = await User.findById(req.user.id);
     const now = new Date();
-    const cooldown = 2 * 60 * 60 * 1000;
+    const cooldown = 2 * 60 * 60 * 1000; // 2 hours
 
     if (now - user.lastClaimed < cooldown) {
-        const diff = cooldown - (now - user.lastClaimed);
-        const mins = Math.ceil(diff / 60000);
-        return res.status(400).json({ message: \`Try again in \${mins} minutes.\` });
+        const remaining = Math.ceil((cooldown - (now - user.lastClaimed)) / 60000);
+        return res.status(400).json({ message: \`Wait \${remaining} minutes before claiming again!\` });
     }
 
     user.vbucks += 200;
     user.lastClaimed = now;
     await user.save();
-    res.json({ message: "200 V-Bucks Added!", newBalance: user.vbucks });
+    res.json({ message: "200 V-Bucks added!", newBalance: user.vbucks });
 });
 
-// 4. Get User Info
+// User Info API
 app.get('/api/me', (req, res) => {
-    if (req.isAuthenticated()) res.json(req.user);
-    else res.status(401).json({ message: "Guest" });
+    if (req.isAuthenticated()) return res.json(req.user);
+    res.status(401).json({ message: "Unauthorized" });
 });
 
+// Logout
+app.get('/logout', (req, res) => {
+    req.logout(() => res.redirect('/'));
+});
+
+// Static Files
 app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(\`Server running on port \${PORT}\`));
+app.listen(PORT, () => console.log(\`🚀 Server active on port \${PORT}\`));
