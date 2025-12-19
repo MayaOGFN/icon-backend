@@ -1,38 +1,60 @@
-require('dotenv').config();
+require('dotenv')require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const session = require('express-session');
+const path = require('path');
 
 const app = express();
-app.use(express.json());
 
-// --- MONGODB CONNECTION ---
-// Make sure 0.0.0.0/0 is whitelisted in MongoDB Atlas!
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log("✅ Connected to MongoDB Atlas"))
-    .catch(err => console.error("❌ MongoDB Error:", err));
+// --- CONFIGURATION ---
+const CLIENT_ID = '1451508740493934725';
+const CLIENT_SECRET = 'aPdQ4Ya8DUEnrHkJp-5fyGFPoYAaGhkq';
+const REDIRECT_URI = 'https://icon-backend-9chw.onrender.com/auth/discord/callback';
+const MONGODB_URI = process.env.MONGODB_URI; // Set this in Render Dashboard!
 
-// --- USER SCHEMA ---
+// --- DATABASE SETUP ---
+mongoose.connect(MONGODB_URI)
+    .then(() => console.log("✅ Database Connected"))
+    .catch(err => console.error("❌ Database Connection Error:", err));
+
 const userSchema = new mongoose.Schema({
     discordId: String,
     username: String,
     email: String,
     vbucks: { type: Number, default: 0 },
-    lastClaimed: { type: Date, default: new Date(0) } // Initialized to long ago
+    lastClaimed: { type: Date, default: new Date(0) }
 });
 const User = mongoose.model('User', userSchema);
 
-// --- DISCORD OAUTH SETUP ---
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => User.findById(id, (err, user) => done(err, user)));
+// --- PASSPORT / SESSION SETUP ---
+app.use(session({
+    secret: 'icon_launcher_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 60000 * 60 * 24 } // 24 hours
+}));
 
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findById(id);
+        done(null, user);
+    } catch (err) {
+        done(err, null);
+    }
+});
+
+// --- DISCORD STRATEGY ---
 passport.use(new DiscordStrategy({
-    clientID: process.env.1451508740493934725,
-    clientSecret: process.env.aPdQ4Ya8DUEnrHkJp-5fyGFPoYAaGhkq,
-    callbackURL: "https://icon-backend-9chw.onrender.com/auth/discord/callback",
-    scope: ['identify', 'email']
+    clientID: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    callbackURL: REDIRECT_URI,
+    scope: ['identify', 'email', 'guilds.join']
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         let user = await User.findOne({ discordId: profile.id });
@@ -40,8 +62,7 @@ passport.use(new DiscordStrategy({
             user = await User.create({
                 discordId: profile.id,
                 username: profile.username,
-                email: profile.email,
-                vbucks: 0
+                email: profile.email
             });
         }
         return done(null, user);
@@ -50,49 +71,52 @@ passport.use(new DiscordStrategy({
     }
 }));
 
-app.use(session({ secret: 'project_icon_secret', resave: false, saveUninitialized: false }));
-app.use(passport.initialize());
-app.use(passport.session());
+// --- ROUTES ---
 
-// --- AUTH ROUTES ---
+// Middleware to check if user is logged in
+const checkAuth = (req, res, next) => {
+    if (req.isAuthenticated()) return next();
+    res.redirect('/');
+};
+
+// Discord Login
 app.get('/auth/discord', passport.authenticate('discord'));
-app.get('/auth/discord/callback', passport.authenticate('discord', {
-    failureRedirect: '/'
-}), (req, res) => res.redirect('/dashboard')); // Redirect to your HTML dashboard
 
-// --- V-BUCKS CLAIM ROUTE (2 HOUR COOLDOWN) ---
-app.post('/api/claim', async (req, res) => {
-    // In a real app, use req.user.id from session
-    const { email } = req.body; 
-    const user = await User.findOne({ email });
+// Discord Callback
+app.get('/auth/discord/callback', 
+    passport.authenticate('discord', { failureRedirect: '/' }), 
+    (req, res) => {
+        // Redirect to index with user info in URL for the UI to catch
+        res.redirect(`/?auth=true&user=${encodeURIComponent(req.user.username)}&vbucks=${req.user.vbucks}`);
+    }
+);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-
+// Claim V-Bucks Route
+app.post('/api/claim', checkAuth, async (req, res) => {
+    const user = await User.findById(req.user.id);
     const now = new Date();
-    const cooldown = 2 * 60 * 60 * 1000; // 2 hours in ms
-    const timePassed = now - new Date(user.lastClaimed);
+    const cooldown = 2 * 60 * 60 * 1000; // 2 hours
 
-    if (timePassed < cooldown) {
-        const timeLeft = cooldown - timePassed;
-        const minutes = Math.ceil(timeLeft / (1000 * 60));
-        return res.status(400).json({ 
-            message: `Too soon! Try again in ${minutes} minutes.` 
-        });
+    if (now - user.lastClaimed < cooldown) {
+        const remainingMs = cooldown - (now - user.lastClaimed);
+        const minutes = Math.ceil(remainingMs / 60000);
+        return res.status(400).json({ message: `Cooldown! Try again in ${minutes} minutes.` });
     }
 
     user.vbucks += 200;
     user.lastClaimed = now;
     await user.save();
 
-    res.json({ message: "Success! 200 V-Bucks added.", newBalance: user.vbucks });
+    res.json({ message: "200 V-Bucks Claimed!", newBalance: user.vbucks });
 });
 
-// --- SHOP DATA ROUTE ---
-app.get('/code/shop', (req, res) => {
-    // Your shop.json logic here
-    res.sendFile(__dirname + '/shop.json');
+// Logout
+app.get('/logout', (req, res) => {
+    req.logout(() => res.redirect('/'));
 });
+
+// Serve Static Files (Make sure your index.html is in a folder named 'public')
+app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-});
+app.listen(PORT, () => console.log(`🚀 Project Icon Backend running on port ${PORT}`));
